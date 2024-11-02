@@ -17,7 +17,6 @@ fn main() -> Result<(), Box <dyn Error>> {
 
 
     match audio_format {
-        AudioFormat::Mp3 => {},
         AudioFormat::NotSupported => {},
         AudioFormat::Wav => {
             let wav_io = WavIO();

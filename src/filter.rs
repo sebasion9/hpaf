@@ -56,13 +56,11 @@ impl Filter {
 #[derive(Eq, PartialEq)]
 pub enum AudioFormat {
     Wav,
-    Mp3,
     NotSupported
 }
 impl From<&str> for AudioFormat {
     fn from(value: &str) -> Self {
         match value {
-            "mp3" => AudioFormat::Mp3,
             "wav" => AudioFormat::Wav,
             _=> AudioFormat::NotSupported
         }
