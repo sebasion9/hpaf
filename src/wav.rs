@@ -1,6 +1,6 @@
 use std::io::Error;
 use hound::{WavSpec,WavReader,WavWriter};
-use crate::iosample::{SampleFormat, IOSamples};
+use crate::iosample::IOSamples;
 
 pub struct WavIO {
     pub spec: Option<WavSpec>
@@ -44,19 +44,3 @@ impl IOSamples for WavIO {
     }
 }
 
-impl Into<hound::SampleFormat> for SampleFormat {
-    fn into(self) -> hound::SampleFormat {
-        match self {
-            Self::Int => hound::SampleFormat::Int,
-            Self::Float => hound::SampleFormat::Float,
-        }
-    }
-}
-impl From<hound::SampleFormat> for SampleFormat {
-    fn from(value: hound::SampleFormat) -> Self {
-        match value {
-            hound::SampleFormat::Int => Self::Int,
-            hound::SampleFormat::Float => Self::Float,
-        }
-    }
-}

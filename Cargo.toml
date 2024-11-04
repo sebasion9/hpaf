@@ -6,3 +6,5 @@ edition = "2021"
 [dependencies]
 clap = { version = "4.5.20", features = ["derive"] }
 hound = "3.5.1"
+mp3lame-encoder = "0.2.0"
+symphonia = { version = "0.5.4", features = ["mp3"] }

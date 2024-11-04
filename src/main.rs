@@ -30,7 +30,7 @@ fn main() -> Result<()> {
             let audio_format_str : &str = audio_format.into();
             println!("hpaf :: Applying filter for '{}' audio", audio_format_str);
 
-            let mp3_io = Mp3IO();
+            let mp3_io = Mp3IO { spec : None };
             filter.apply(mp3_io, input_path, output_path)?;
         }
     }
