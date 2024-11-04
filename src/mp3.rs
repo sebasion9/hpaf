@@ -1,7 +1,7 @@
 use mp3lame_encoder::{Builder, DualPcm,FlushNoGap};
 use symphonia::core::{audio::SampleBuffer, codecs::{DecoderOptions, CODEC_TYPE_NULL}, formats::FormatOptions, io::MediaSourceStream, meta::MetadataOptions, probe::Hint};
 use symphonia::core::errors::Error;
-use crate::iosample::IOSamples;
+use crate::{iosample::IOSamples, logger::Log};
 use std::{fs::File, io::Write};
 
 pub struct Mp3Spec {
@@ -16,7 +16,11 @@ pub struct Mp3IO {
 impl IOSamples for Mp3IO {
     // reference https://github.com/pdeljanov/Symphonia/blob/master/symphonia/examples/getting-started.rs
     fn read_samples(&mut self, filepath : &String) -> std::io::Result<Vec<i16> > {
+        let logger = Log::new();
         let mut samples : Vec<i16> = vec![];
+
+        logger.info(format!("Prepare for decoding mp3"));
+
         let src = File::open(filepath)?;
         let mss = MediaSourceStream::new(Box::new(src), Default::default());
         let mut hint = Hint::new();
@@ -52,7 +56,8 @@ impl IOSamples for Mp3IO {
 
         let mut sample_count = 0;
         let mut sample_buf = None;
-        println!("hpaf :: Decoding 'mp3' audio");
+        logger.info(format!("Decoding mp3 audio"));
+
         // decode loop
         loop {
             let packet = match format.next_packet() {
@@ -85,15 +90,16 @@ impl IOSamples for Mp3IO {
 
                 }
                 Err(Error::IoError(_)) => {
-                    println!("hpaf :: Failed to decode packed due to an IO error, skipping the packet");
+                    logger.error(format!("Failed to decode packet due to an IO error, skipping the packet"));
                     continue;
                 }
                 Err(Error::DecodeError(_)) => {
-                    println!("hpaf :: Failed to decode packed due to invalid data, skipping the packet");
+                    logger.error(format!("Failed to decode packet due to invalid data, skipping the packet"));
                     continue;
                 }
-                Err(_) => {
+                Err(e) => {
                     // unrecoverable error, halt decoding
+                    logger.error(format!("Ran into unrecoverable error: {}",e));
                     break;
                 }
             }

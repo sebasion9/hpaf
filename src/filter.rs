@@ -1,7 +1,7 @@
-use std::{io::{Error, ErrorKind, Result}, time::Instant, path::Path, f32::consts::PI, ffi::OsStr};
+use std::{io::{Error, ErrorKind, Result}, path::Path, f32::consts::PI, ffi::OsStr};
 
 
-use crate::iosample::IOSamples;
+use crate::{iosample::IOSamples, logger::Log};
 pub struct Filter {
     cutoff_freq : u16,
 }
@@ -25,9 +25,13 @@ impl Filter {
     }
 
     pub fn apply(&mut self, mut io_audio : impl IOSamples, filepath : &String, output_path: &String) -> Result<()> {
+        let mut logger = Log::new();
+        logger.time_start();
+
         let mut samples = io_audio.read_samples(filepath)?;
 
-        let now = Instant::now();
+        logger.time_end();
+        logger.benchmark(format!("Reading samples succeded"));
 
         let sample_rate;
         if let Some(rate) = io_audio.get_sample_rate() {
@@ -36,6 +40,9 @@ impl Filter {
         else {
             return Err(Error::new(ErrorKind::InvalidData, "Failed to retrieve sample rate"));
         }
+
+        logger.time_start();
+        logger.info(format!("Processing samples now"));
 
         let tan = (PI * self.cutoff_freq as f32  / sample_rate).tan();
         let coef = (tan - 1.0) / (tan + 1.0);
@@ -51,10 +58,15 @@ impl Filter {
             samples[i] = processed_sample as i16;
         }
 
-        let elapsed = now.elapsed();
-        println!("hpaf :: Filter applied in: {:.2?}", elapsed);
-        println!("hpaf :: Writing to file at: {}", output_path);
+        logger.time_end();
+        logger.benchmark(format!("Filter applied"));
+
+        logger.time_start();
+        logger.info(format!("Writing to file at: {}", output_path));
         io_audio.write_samples(output_path, samples)?;
+
+        logger.time_end();
+        logger.benchmark(format!("Writing samples succeded"));
 
         Ok(())
     }
