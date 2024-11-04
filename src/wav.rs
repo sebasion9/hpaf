@@ -1,33 +1,14 @@
-use std::error::Error;
+use std::io::Error;
 use hound::{WavSpec,WavReader,WavWriter};
-use crate::{bridge::{SampleFormat, Specs, IOSamples}, filter::Filter};
+use crate::iosample::{SampleFormat, IOSamples};
 
-pub struct WavIO ();
-impl From<WavSpec> for Specs {
-    fn from(value: WavSpec) -> Self {
-        Self {
-            channels : value.channels,
-            sample_rate : value.sample_rate,
-            sample_format : value.sample_format.into(),
-            bits_per_sample : value.bits_per_sample
-        }
-    }
-}
-
-impl Into<WavSpec> for Specs {
-    fn into(self) -> WavSpec {
-        WavSpec {
-            channels : self.channels,
-            sample_rate : self.sample_rate,
-            sample_format : self.sample_format.into(),
-            bits_per_sample : self.bits_per_sample
-        }
-    }
+pub struct WavIO {
+    pub spec: Option<WavSpec>
 }
 
 impl IOSamples for WavIO {
-    fn read_samples(&self, filepath : &String, filter : &mut Filter) -> Result<Vec<i16>, Box<dyn Error>> {
-        let mut reader = WavReader::open(filepath)?;
+    fn read_samples(&mut self, filepath : &String) -> Result<Vec<i16>, Error> {
+        let mut reader = WavReader::open(filepath).expect("Failed to open '.wav' file");
         let samples = reader.samples::<i16>();
         let samples_vec : Vec<i16> = samples.map(|s| {
             match s {
@@ -35,24 +16,31 @@ impl IOSamples for WavIO {
                 Err(e) => panic!("Failed to read sample: {}", e),
             }
         }).collect();
-        filter.specs = reader.spec().into();
+        self.spec = Some(reader.spec().into());
         Ok(samples_vec)
     }
-    fn write_samples(&self, filepath : &String, output : Vec<i16>, filter : &mut Filter) -> Result<(), Box<dyn Error>> {
-        let spec; 
-        spec = WavSpec {
-                channels : filter.specs.channels,
-                bits_per_sample : filter.specs.bits_per_sample,
-                sample_rate : filter.specs.sample_rate,
-                sample_format : SampleFormat::Int.into()
-            };
-
-        let mut writer = WavWriter::create(filepath, spec)?;
+    fn write_samples(&mut self, filepath : &String, output : Vec<i16>) -> Result<(), Error> {
+        let spec;
+        if let Some(sp) = self.spec {
+            spec = sp;
+        }
+        else {
+            return Err(Error::new(std::io::ErrorKind::InvalidData, "Unitialized spec in .wav"));
+        }
+        let mut writer = WavWriter::create(filepath, spec).expect("Failed to create '.wav' file");
 
         for sample in output {
-            writer.write_sample(sample)?;
+            writer.write_sample(sample).expect("Failed to write sample to output");
         }
         Ok(())
+    }
+    fn get_sample_rate(&mut self) -> Option<u32> {
+        if let Some(spec) = self.spec {
+            return Some(spec.sample_rate)
+        }
+        else {
+            return None
+        }
     }
 }
 

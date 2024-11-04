@@ -1,33 +1,41 @@
-use std::{path::Path, f32::consts::PI, ffi::OsStr, error::Error};
+use std::{io::{Error, ErrorKind, Result}, time::Instant, path::Path, f32::consts::PI, ffi::OsStr};
 
 
-use crate::bridge::{Specs, IOSamples};
+use crate::iosample::IOSamples;
 pub struct Filter {
     cutoff_freq : u16,
-    pub specs : Specs,
 }
 
 impl Filter {
-    pub fn new(cutoff_freq : u16, specs : Specs) -> Self {
+    pub fn new(cutoff_freq : u16) -> Self {
         Self {
             cutoff_freq,
-            specs
         }
     }
 
-    pub fn audio_format_supported(&self, filepath : &String) -> Result<AudioFormat, Box <dyn Error>> {
+    pub fn audio_format_supported(&self, filepath : &String) -> Result<AudioFormat> {
         if let Some(ext) = Path::new(filepath).extension().and_then(OsStr::to_str) {
             let audio_format = AudioFormat::from(ext);
             if audio_format == AudioFormat::NotSupported {
-                return Err(Into::into(format!("This type of audio is not supported yet: {}", ext)))
+                return Err(Error::new(ErrorKind::Unsupported, format!("This type of audio is not supported yet: {}", ext)));
             }
             return Ok(audio_format);
         }
-        Err(Into::into("Failed to retrieve the file extension"))
+        Err(Error::new(ErrorKind::InvalidInput, "Failed to retrieve the file extension"))
     }
-    pub fn apply(&mut self, io_audio : impl IOSamples, filepath : &String, output_path: &String) -> Result<(), Box<dyn Error>> {
-        let mut samples = io_audio.read_samples(filepath, self)?;
-        let sample_rate = self.specs.sample_rate as f32;
+
+    pub fn apply(&mut self, mut io_audio : impl IOSamples, filepath : &String, output_path: &String) -> Result<()> {
+        let mut samples = io_audio.read_samples(filepath)?;
+
+        let now = Instant::now();
+
+        let sample_rate;
+        if let Some(rate) = io_audio.get_sample_rate() {
+            sample_rate = rate as f32; 
+        }
+        else {
+            return Err(Error::new(ErrorKind::InvalidData, "Failed to retrieve sample rate"));
+        }
 
         let tan = (PI * self.cutoff_freq as f32  / sample_rate).tan();
         let coef = (tan - 1.0) / (tan + 1.0);
@@ -43,7 +51,10 @@ impl Filter {
             samples[i] = processed_sample as i16;
         }
 
-        io_audio.write_samples(output_path, samples, self)?;
+        let elapsed = now.elapsed();
+        println!("hpaf :: Filter applied in: {:.2?}", elapsed);
+        println!("hpaf :: Writing to file at: {}", output_path);
+        io_audio.write_samples(output_path, samples)?;
 
         Ok(())
     }
@@ -52,12 +63,14 @@ impl Filter {
 #[derive(Eq, PartialEq)]
 pub enum AudioFormat {
     Wav,
+    Mp3,
     NotSupported
 }
 impl From<&str> for AudioFormat {
     fn from(value: &str) -> Self {
         match value {
             "wav" => AudioFormat::Wav,
+            "mp3" => AudioFormat::Mp3,
             _=> AudioFormat::NotSupported
         }
     }
@@ -66,6 +79,7 @@ impl Into<&str> for AudioFormat {
     fn into(self) -> &'static str {
         match self {
             Self::Wav => "wav",
+            Self::Mp3=> "mp3",
             Self::NotSupported => "audio format not supported"
         }
     }
