@@ -10,18 +10,30 @@ pub struct Mp3Spec {
 }
 
 pub struct Mp3IO {
-    pub spec : Option<Mp3Spec>
+    spec : Option<Mp3Spec>,
+    input_path : String,
+    output_path : String
 }
+impl Mp3IO {
+    pub fn new(input_path : String, output_path : String, spec : Option<Mp3Spec>) -> Self {
+        Self {
+            input_path,
+            output_path,
+            spec
+        }
+    }
+}
+
 #[allow(unused_variables)]
 impl IOSamples for Mp3IO {
     // reference https://github.com/pdeljanov/Symphonia/blob/master/symphonia/examples/getting-started.rs
-    fn read_samples(&mut self, filepath : &String) -> std::io::Result<Vec<i16> > {
+    fn read_samples(&mut self) -> std::io::Result<Vec<i16> > {
         let logger = Log::new();
         let mut samples : Vec<i16> = vec![];
 
         logger.info(format!("Prepare for decoding mp3"));
 
-        let src = File::open(filepath)?;
+        let src = File::open(&self.input_path)?;
         let mss = MediaSourceStream::new(Box::new(src), Default::default());
         let mut hint = Hint::new();
         hint.with_extension("mp3");
@@ -108,7 +120,7 @@ impl IOSamples for Mp3IO {
     }
 
     // reference https://github.com/DoumanAsh/mp3lame-encoder?tab=readme-ov-file#example
-    fn write_samples(&mut self, filepath : &String, output : Vec<i16>) -> std::io::Result<()> {
+    fn write_samples(&mut self, output : Vec<i16>) -> std::io::Result<()> {
         let mp3_spec;
         if let Some(spec) = &self.spec {
             mp3_spec = spec;
@@ -143,7 +155,7 @@ impl IOSamples for Mp3IO {
             mp3_out_buffer.set_len(mp3_out_buffer.len().wrapping_add(encoded_size));
         }
 
-        let mut file = File::create(filepath)?;
+        let mut file = File::create(&self.output_path)?;
         file.write_all(&mp3_out_buffer)?;
 
         Ok(())

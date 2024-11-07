@@ -3,12 +3,23 @@ use hound::{WavSpec,WavReader,WavWriter};
 use crate::iosample::IOSamples;
 
 pub struct WavIO {
-    pub spec: Option<WavSpec>
+    spec: Option<WavSpec>,
+    input_path : String,
+    output_path : String
+}
+impl WavIO {
+    pub fn new(input_path : String, output_path : String, spec : Option<WavSpec>) -> Self {
+        Self {
+            input_path,
+            output_path,
+            spec
+        }
+    }
 }
 
 impl IOSamples for WavIO {
-    fn read_samples(&mut self, filepath : &String) -> Result<Vec<i16>, Error> {
-        let mut reader = WavReader::open(filepath).expect("Failed to open '.wav' file");
+    fn read_samples(&mut self) -> Result<Vec<i16>, Error> {
+        let mut reader = WavReader::open(&self.input_path).expect("Failed to open '.wav' file");
         let samples = reader.samples::<i16>();
         let samples_vec : Vec<i16> = samples.map(|s| {
             match s {
@@ -19,7 +30,7 @@ impl IOSamples for WavIO {
         self.spec = Some(reader.spec().into());
         Ok(samples_vec)
     }
-    fn write_samples(&mut self, filepath : &String, output : Vec<i16>) -> Result<(), Error> {
+    fn write_samples(&mut self, output : Vec<i16>) -> Result<(), Error> {
         let spec;
         if let Some(sp) = self.spec {
             spec = sp;
@@ -27,7 +38,7 @@ impl IOSamples for WavIO {
         else {
             return Err(Error::new(std::io::ErrorKind::InvalidData, "Unitialized spec in .wav"));
         }
-        let mut writer = WavWriter::create(filepath, spec).expect("Failed to create '.wav' file");
+        let mut writer = WavWriter::create(&self.output_path, spec).expect("Failed to create '.wav' file");
 
         for sample in output {
             writer.write_sample(sample).expect("Failed to write sample to output");

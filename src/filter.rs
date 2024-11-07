@@ -2,39 +2,26 @@ use std::{io::{Error, ErrorKind, Result}, path::Path, f32::consts::PI, ffi::OsSt
 
 
 use crate::{iosample::IOSamples, logger::Log};
-pub struct Filter {
+pub struct Filter<T : IOSamples> {
     cutoff_freq : u16,
+    io_samples : T
 }
 
-impl Filter {
-    pub fn new(cutoff_freq : u16) -> Self {
+impl<T : IOSamples> Filter<T> {
+    pub fn new(cutoff_freq : u16, io_samples : T) -> Self {
         Self {
             cutoff_freq,
+            io_samples
         }
     }
 
-    pub fn audio_format_supported(&self, filepath : &String) -> Result<AudioFormat> {
-        if let Some(ext) = Path::new(filepath).extension().and_then(OsStr::to_str) {
-            let audio_format = AudioFormat::from(ext);
-            if audio_format == AudioFormat::NotSupported {
-                return Err(Error::new(ErrorKind::Unsupported, format!("This type of audio is not supported yet: {}", ext)));
-            }
-            return Ok(audio_format);
-        }
-        Err(Error::new(ErrorKind::InvalidInput, "Failed to retrieve the file extension"))
-    }
-
-    pub fn apply(&mut self, mut io_audio : impl IOSamples, filepath : &String, output_path: &String) -> Result<()> {
+    pub fn apply(&mut self) -> Result<()> {
         let mut logger = Log::new();
-        logger.time_start();
 
-        let mut samples = io_audio.read_samples(filepath)?;
-
-        logger.time_end();
-        logger.benchmark(format!("Reading samples succeded"));
+        let mut samples = self.io_samples.read_samples()?;
 
         let sample_rate;
-        if let Some(rate) = io_audio.get_sample_rate() {
+        if let Some(rate) = self.io_samples.get_sample_rate() {
             sample_rate = rate as f32; 
         }
         else {
@@ -61,12 +48,8 @@ impl Filter {
         logger.time_end();
         logger.benchmark(format!("Filter applied"));
 
-        logger.time_start();
-        logger.info(format!("Writing to file at: {}", output_path));
-        io_audio.write_samples(output_path, samples)?;
+        self.io_samples.write_samples(samples)?;
 
-        logger.time_end();
-        logger.benchmark(format!("Writing samples succeded"));
 
         Ok(())
     }
@@ -95,4 +78,15 @@ impl Into<&str> for AudioFormat {
             Self::NotSupported => "audio format not supported"
         }
     }
+}
+
+pub fn audio_format_supported(filepath : &String) -> Result<AudioFormat> {
+    if let Some(ext) = Path::new(filepath).extension().and_then(OsStr::to_str) {
+        let audio_format = AudioFormat::from(ext);
+        if audio_format == AudioFormat::NotSupported {
+            return Err(Error::new(ErrorKind::Unsupported, format!("This type of audio is not supported yet: {}", ext)));
+        }
+        return Ok(audio_format);
+    }
+    Err(Error::new(ErrorKind::InvalidInput, "Failed to retrieve the file extension"))
 }
