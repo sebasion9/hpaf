@@ -1,6 +1,6 @@
 use std::io::Error;
 use hound::{WavSpec,WavReader,WavWriter};
-use crate::iosample::IOSamples;
+use crate::io::iosample::IOSamples;
 
 pub struct WavIO {
     spec: Option<WavSpec>,

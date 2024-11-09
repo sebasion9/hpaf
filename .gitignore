@@ -1,4 +1,5 @@
 /target
 *.wav
 *.mp3
+/audio_examples
 TODO.md

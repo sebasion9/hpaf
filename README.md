@@ -20,7 +20,7 @@ cargo build --release
 # Example Usage
 
 ```
-./target/release/hpaf -s example.wav -o example.out.wav -f 500
+./target/release/hpaf convert -s example.wav -o example.out.wav -f 500
 ```
 
 # Parameters

@@ -1,7 +1,9 @@
-use std::{io::{Error, ErrorKind, Result}, path::Path, f32::consts::PI, ffi::OsStr};
+use std::{io::{Error, ErrorKind, Result},
+    path::Path, f32::consts::PI, ffi::OsStr};
 
+use crate::io::iosample::IOSamples;
+use crate::util::logger::Log;
 
-use crate::{iosample::IOSamples, logger::Log};
 pub struct Filter<T : IOSamples> {
     cutoff_freq : u16,
     io_samples : T
@@ -14,12 +16,29 @@ impl<T : IOSamples> Filter<T> {
             io_samples
         }
     }
-
-    pub fn apply(&mut self) -> Result<()> {
+    pub fn convert(&mut self) -> Result<()> {
         let mut logger = Log::new();
 
+        logger.info(format!("Reading samples"));
+        logger.time_start();
         let mut samples = self.io_samples.read_samples()?;
+        logger.benchmark(format!("Samples read"));
 
+        logger.time_start();
+        logger.info(format!("Processing samples now"));
+
+        self.apply(&mut samples)?;
+
+        logger.benchmark(format!("Filter applied"));
+
+        logger.info(format!("Writing samples"));
+        logger.time_start();
+        self.io_samples.write_samples(samples)?;
+        logger.benchmark(format!("Samples wrote"));
+        Ok(())
+    }
+
+    fn apply(&mut self, samples : &mut Vec<i16>) -> Result<()> {
         let sample_rate;
         if let Some(rate) = self.io_samples.get_sample_rate() {
             sample_rate = rate as f32; 
@@ -27,10 +46,6 @@ impl<T : IOSamples> Filter<T> {
         else {
             return Err(Error::new(ErrorKind::InvalidData, "Failed to retrieve sample rate"));
         }
-
-        logger.time_start();
-        logger.info(format!("Processing samples now"));
-
         let tan = (PI * self.cutoff_freq as f32  / sample_rate).tan();
         let coef = (tan - 1.0) / (tan + 1.0);
 
@@ -45,17 +60,11 @@ impl<T : IOSamples> Filter<T> {
             samples[i] = processed_sample as i16;
         }
 
-        logger.time_end();
-        logger.benchmark(format!("Filter applied"));
-
-        self.io_samples.write_samples(samples)?;
-
-
         Ok(())
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Clone, Copy)]
 pub enum AudioFormat {
     Wav,
     Mp3,

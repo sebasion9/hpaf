@@ -1,13 +1,13 @@
-mod args;
-mod wav;
-mod logger;
+mod io;
+mod util;
 mod filter;
-mod iosample;
-mod mp3;
+
 use std::io::Result;
 use clap::Parser;
-use filter::audio_format_supported;
-use crate::{args::{App, Commands}, filter::{Filter, AudioFormat}, wav::WavIO, mp3::Mp3IO, logger::Log};
+
+use filter::{audio_format_supported, AudioFormat, Filter};
+use io::{mp3::Mp3IO, wav::WavIO};
+use util::{args::{App, Commands}, logger::Log};
 
 fn main() -> Result<()> {
     let app = App::parse();
@@ -17,32 +17,29 @@ fn main() -> Result<()> {
             let input_path = args.source;
             let output_path = args.output;
 
-
             let audio_format = audio_format_supported(&input_path)?;
+            let audio_format_str : &str = audio_format.into();
+            logger.info(format!("Convert mode"));
+            logger.info(format!("Applying filter for '{}' audio", audio_format_str));
 
             match audio_format {
                 AudioFormat::NotSupported => {},
                 AudioFormat::Wav => {
 
-                    let audio_format_str : &str = audio_format.into();
-                    logger.info(format!("Applying filter for '{}' audio", audio_format_str));
-
                     let wav_io = WavIO::new(input_path, output_path, None);
                     let mut filter = Filter::new(args.frequency, wav_io);
-                    filter.apply()?;
+                    filter.convert()?;
                 },
                 AudioFormat::Mp3 => {
-                    let audio_format_str : &str = audio_format.into();
-                    logger.info(format!("Applying filter for '{}' audio", audio_format_str));
 
                     let mp3_io = Mp3IO::new(input_path, output_path, None);
                     let mut filter = Filter::new(args.frequency, mp3_io);
-                    filter.apply()?;
+                    filter.convert()?;
                 }
             }
         },
-        Commands::Stream(args) => {
-
+        Commands::Stream(_args) => {
+            todo!()
         }
     }
 
