@@ -9,4 +9,11 @@ colored = "2.1.0"
 cpal = "0.15.3"
 hound = "3.5.1"
 mp3lame-encoder = "0.2.0"
-symphonia = { version = "0.5.4", features = ["mp3"] }
+ringbuf = "0.4.7"
+symphonia = { version = "0.5.4", default-features = false, features = ["mp3"] }
+
+[profile.release]
+opt-level = 3
+
+[profile.dev]
+opt-level = 0

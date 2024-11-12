@@ -5,8 +5,9 @@ mod filter;
 use std::io::Result;
 use clap::Parser;
 
+use colored::Colorize;
 use filter::{audio_format_supported, AudioFormat, Filter};
-use io::{mp3::Mp3IO, wav::WavIO};
+use io::{mp3::Mp3IO, wav::WavIO, stream::StreamIO};
 use util::{args::{App, Commands}, logger::Log};
 
 fn main() -> Result<()> {
@@ -20,7 +21,7 @@ fn main() -> Result<()> {
             let audio_format = audio_format_supported(&input_path)?;
             let audio_format_str : &str = audio_format.into();
             logger.info(format!("Convert mode"));
-            logger.info(format!("Applying filter for '{}' audio", audio_format_str));
+            logger.info(format!("Applying filter for '{}' audio", audio_format_str.bright_red()));
 
             match audio_format {
                 AudioFormat::NotSupported => {},
@@ -38,8 +39,8 @@ fn main() -> Result<()> {
                 }
             }
         },
-        Commands::Stream(_args) => {
-            todo!()
+        Commands::Stream(args) => {
+            let stream_io = StreamIO::from_stream_args(args);
         }
     }
 

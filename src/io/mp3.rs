@@ -28,9 +28,9 @@ impl Mp3IO {
 #[allow(unused_variables)]
 impl IOSamples for Mp3IO {
     // reference https://github.com/pdeljanov/Symphonia/blob/master/symphonia/examples/getting-started.rs
-    fn read_samples(&mut self) -> std::io::Result<Vec<i16> > {
+    fn read_samples(&mut self) -> std::io::Result<Vec<f32> > {
         let logger = Log::new();
-        let mut samples : Vec<i16> = vec![];
+        let mut samples : Vec<f32> = vec![];
 
         logger.info(format!("Prepare for decoding mp3"));
 
@@ -91,7 +91,7 @@ impl IOSamples for Mp3IO {
                     if sample_buf.is_none() {
                         let spec = *audio_buf.spec();
                         let dur = audio_buf.capacity() as u64;
-                        sample_buf = Some(SampleBuffer::<i16>::new(dur, spec));
+                        sample_buf = Some(SampleBuffer::<f32>::new(dur, spec));
                     }
                     if let Some(buf) = &mut sample_buf {
                         buf.copy_interleaved_ref(audio_buf);
@@ -121,7 +121,7 @@ impl IOSamples for Mp3IO {
     }
 
     // reference https://github.com/DoumanAsh/mp3lame-encoder?tab=readme-ov-file#example
-    fn write_samples(&mut self, output : Vec<i16>) -> std::io::Result<()> {
+    fn write_samples(&mut self, output : Vec<f32>) -> std::io::Result<()> {
         let mp3_spec;
         if let Some(spec) = &self.spec {
             mp3_spec = spec;
@@ -136,8 +136,8 @@ impl IOSamples for Mp3IO {
         mp3_encoder.set_quality(mp3lame_encoder::Quality::Best).expect("Failed to set sample rate");
         let mut mp3_encoder = mp3_encoder.build().expect("Failed to initialize LAME encoder");
 
-        let left_channel: Vec<i16> = output.iter().step_by(2).cloned().collect();
-        let right_channel: Vec<i16> = output.iter().skip(1).step_by(2).cloned().collect();
+        let left_channel: Vec<f32> = output.iter().step_by(2).cloned().collect();
+        let right_channel: Vec<f32> = output.iter().skip(1).step_by(2).cloned().collect();
 
         let input = DualPcm {
             left : &left_channel,

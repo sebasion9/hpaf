@@ -38,7 +38,7 @@ impl<T : IOSamples> Filter<T> {
         Ok(())
     }
 
-    fn apply(&mut self, samples : &mut Vec<i16>) -> Result<()> {
+    fn apply(&mut self, samples : &mut Vec<f32>) -> Result<()> {
         let sample_rate;
         if let Some(rate) = self.io_samples.get_sample_rate() {
             sample_rate = rate as f32; 
@@ -49,15 +49,15 @@ impl<T : IOSamples> Filter<T> {
         let tan = (PI * self.cutoff_freq as f32  / sample_rate).tan();
         let coef = (tan - 1.0) / (tan + 1.0);
 
-        let mut prev_s = samples[0] as f32;
-        let mut prev_output = samples[0] as f32;
+        let mut prev_s = samples[0];
+        let mut prev_output = samples[0];
 
         for i in 1..samples.len() - 1 {
             let s = samples[i] as f32;
             let processed_sample = coef * (prev_output + s - prev_s);
             prev_output = processed_sample;
             prev_s = s;
-            samples[i] = processed_sample as i16;
+            samples[i] = processed_sample;
         }
 
         Ok(())
